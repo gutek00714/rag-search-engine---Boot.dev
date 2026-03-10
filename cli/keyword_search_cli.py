@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+from lib.keyword_search import keyword_search
+
 
 
 def main() -> None:
@@ -15,7 +17,7 @@ def main() -> None:
     match args.command:
         case "search":
             print(f"Searching for: {args.query}")
-            pass
+            keyword_search(args.query)
         case _:
             parser.print_help()
 
