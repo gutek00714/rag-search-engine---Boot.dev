@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-from lib.keyword_search import keyword_search, InvertedIndex
+from lib.keyword_search import build_command, search_command
 
 
 
@@ -18,13 +18,12 @@ def main() -> None:
     match args.command:
         case "search":
             print(f"Searching for: {args.query}")
-            keyword_search(args.query)
+            results = search_command(args.query)
+            for i, res in enumerate(results, 1):
+                print(f"{i}. ({res['id']}) {res['title']}")
         case "build":
-            idx = InvertedIndex()
-            idx.build()
-            idx.save()
-            docs = idx.get_documents("merida")
-            print(f"First document for 'merida': {docs[0]}")
+            print("Building inverted index...")
+            build_command()
         case _:
             parser.print_help()
 

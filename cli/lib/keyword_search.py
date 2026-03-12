@@ -10,7 +10,8 @@ class InvertedIndex:
         self.docmap = {}
 
     def __add_document(self, doc_id, text):
-        tokens = tokenize(text)
+        stemmer = PorterStemmer()
+        tokens = [stemmer.stem(t) for t in remove_stopwords(tokenize(text))]
         for token in tokens:
             if token in self.index:
                 self.index[token].add(doc_id)
@@ -42,33 +43,51 @@ class InvertedIndex:
         with open('cache/docmap.pkl', 'wb') as f:
             pickle.dump(self.docmap, f)
 
-def keyword_search(query):
-    # Load movie data from JSON storage
-    movies_list = search_utils.load_movies()
+    def load(self):
+        # Check if files exist
+        paths = ["cache/index.pkl", "cache/docmap.pkl"]
+        for path in paths:
+            if not os.path.exists(path):
+                raise FileNotFoundError(f"Missing cache file: {path}")
+            
+        with open("cache/index.pkl", "rb") as f:
+            self.index = pickle.load(f)
+        
+        with open("cache/docmap.pkl", "rb") as f:
+            self.docmap = pickle.load(f)
+
+
+def build_command():
+    idx = InvertedIndex()
+    idx.build()
+    idx.save()
+
+
+def search_command(query):
+    idx = InvertedIndex()
+    try:
+        idx.load()
+    except FileNotFoundError as e:
+        print(e)
+        return []
 
     stemmer = PorterStemmer()
+    query_tokens = [stemmer.stem(t) for t in remove_stopwords(tokenize(query))]
+
     results = []
-
-    # Preprocess the user query into stemmed roots
-    query_tokens = [stemmer.stem(token) for token in remove_stopwords(tokenize(query))]
-
-    for item in movies_list:
-        # Preprocess each title to match the query's format
-        title_tokens = [stemmer.stem(token) for token in remove_stopwords(tokenize(item['title']))]
-
-        # Check if any stemmed query word exists within the stemmed movie title tokens
-        if any(q in t for q in query_tokens for t in title_tokens):
-            results.append(item)
-
-        # Limit retults
+    seen = set()
+    for token in query_tokens:
+        for doc_id in idx.get_documents(token):
+            if doc_id not in seen:
+                seen.add(doc_id)
+                results.append(idx.docmap[doc_id])
+            if len(results) == 5:
+                break
         if len(results) == 5:
             break
 
-        # Print the result
-        for i, item in enumerate(results, start=1):
-            print(f"{i}. {item['title']}")
-
     return results
+
 
 def tokenize(text):
     cleaned_text = text.lower().translate(str.maketrans('', '', string.punctuation))
