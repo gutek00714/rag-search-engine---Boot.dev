@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-from lib.keyword_search import build_command, search_command
+from lib.keyword_search import build_command, search_command, tf_command
 
 
 
@@ -12,6 +12,10 @@ def main() -> None:
 
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
     search_parser.add_argument("query", type=str, help="Search query")
+
+    tf_parser = subparsers.add_parser("tf", help="Get term frequency")
+    tf_parser.add_argument("doc_id", type=int, help="Document ID")
+    tf_parser.add_argument("term", type=str, help="Term to look up")
 
     args = parser.parse_args()
 
@@ -24,6 +28,9 @@ def main() -> None:
         case "build":
             print("Building inverted index...")
             build_command()
+        case "tf":
+            result = tf_command(args.doc_id, args.term)
+            print(f"{args.term}: {result}")
         case _:
             parser.print_help()
 

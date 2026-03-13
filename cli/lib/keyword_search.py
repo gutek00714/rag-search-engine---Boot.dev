@@ -1,13 +1,16 @@
 import os
 import pickle
 import string
+from typing import Counter
 from lib import search_utils
 from nltk.stem import PorterStemmer
+from collections import defaultdict
 
 class InvertedIndex:
     def __init__(self):
         self.index = {}
         self.docmap = {}
+        self.term_frequencies = defaultdict(Counter)
 
     def __add_document(self, doc_id, text):
         stemmer = PorterStemmer()
@@ -17,6 +20,9 @@ class InvertedIndex:
                 self.index[token].add(doc_id)
             else:
                 self.index[token] = {doc_id}
+
+        # add to term_frequencies counter
+        self.term_frequencies[doc_id].update(tokens)
 
     def get_documents(self, term):
         term = term.lower()
@@ -43,6 +49,10 @@ class InvertedIndex:
         with open('cache/docmap.pkl', 'wb') as f:
             pickle.dump(self.docmap, f)
 
+        # Save term_frequencies data
+        with open('cache/term_frequencies.pkl', 'wb') as f:
+            pickle.dump(self.term_frequencies, f)
+
     def load(self):
         # Check if files exist
         paths = ["cache/index.pkl", "cache/docmap.pkl"]
@@ -56,6 +66,20 @@ class InvertedIndex:
         with open("cache/docmap.pkl", "rb") as f:
             self.docmap = pickle.load(f)
 
+        with open("cache/term_frequencies.pkl", 'rb') as f:
+            self.term_frequencies = pickle.load(f)
+
+    def get_tf(self, doc_id, term):
+        # tokenize term
+        stemmer = PorterStemmer()
+        token = [stemmer.stem(t) for t in remove_stopwords(tokenize(term))]
+
+        # check if there is only 1 term
+        if len(token) != 1:
+            raise Exception("Term isn't 1")
+
+        return self.term_frequencies[doc_id][token[0]]
+       
 
 def build_command():
     idx = InvertedIndex()
@@ -87,6 +111,16 @@ def search_command(query):
             break
 
     return results
+
+def tf_command(doc_id, term):
+    idx = InvertedIndex()
+    try:
+        idx.load()
+    except FileNotFoundError as e:
+        print(e)
+        return []
+    
+    return idx.get_tf(doc_id, term)
 
 
 def tokenize(text):
