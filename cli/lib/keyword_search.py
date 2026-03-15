@@ -6,6 +6,7 @@ from lib import search_utils
 from nltk.stem import PorterStemmer
 from collections import defaultdict
 import math
+from lib.search_utils import BM25_K1
 
 class InvertedIndex:
     def __init__(self):
@@ -94,7 +95,14 @@ class InvertedIndex:
         # Denominator (df + 0.5): Count of documents WITH the term (plus smoothing)
         bm25 = math.log((len(self.docmap) - len(self.index[term[0]]) + 0.5) / (len(self.index[term[0]]) + 0.5) + 1)
         return bm25
-       
+    
+    def get_bm25_tf(self, doc_id, term, k1=BM25_K1):
+       # get the raw term frequency
+       tf = self.get_tf(doc_id, term)
+
+       # BM25 daturation formula (tf * (k1 + 1)) / (tf + k1)
+       tf_score = (tf * (k1 + 1)) / (tf + k1)
+       return tf_score
 
 def build_command():
     idx = InvertedIndex()
@@ -185,3 +193,14 @@ def bm25_idf_command(term):
 
     bm25 = idx.get_bm25_idf(term)
     return bm25
+
+def bm25_tf_command(doc_id, term, k1=BM25_K1):
+    idx = InvertedIndex()
+    try:
+        idx.load()
+    except FileNotFoundError as e:
+        print(e)
+        return None
+    
+    bm25_tf_score = idx.get_bm25_tf(doc_id, term, k1)
+    return bm25_tf_score
