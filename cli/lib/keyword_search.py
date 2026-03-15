@@ -147,5 +147,16 @@ def idf_command(term):
     
     # calculate the IDF
     idf = math.log((len(idx.docmap) +1) / (len(idx.index[term[0]]) +1))
-    print(f"IDF value: {idf}")
     return idf
+
+# TF-IDF
+def tfidf_command(doc_id, term):
+    idx = InvertedIndex()
+    try:
+        idx.load()
+    except FileNotFoundError as e:
+        print(e)
+        return []
+
+    tfidf = tf_command(doc_id, term) * idf_command(term)
+    return tfidf
