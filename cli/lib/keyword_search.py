@@ -77,9 +77,23 @@ class InvertedIndex:
 
         # check if there is only 1 term
         if len(token) != 1:
-            raise Exception("Term isn't 1")
+            raise ValueError("term must be a single token")
 
         return self.term_frequencies[doc_id][token[0]]
+    
+    def get_bm25_idf(self, term: str) -> float:
+        # tokenize term
+        stemmer = PorterStemmer()
+        term = [stemmer.stem(t) for t in remove_stopwords(tokenize(term))]
+
+        if len(term) != 1:
+            raise ValueError("term must be a single token")
+
+        # BM25 IDF formula: log((N - df + 0.5) / (df + 0.5) + 1) - (N - total number of documents, df document frequency)
+        # Numerator (N - df + 0.5): Count of documents WITHOUT the term (plus smoothing)
+        # Denominator (df + 0.5): Count of documents WITH the term (plus smoothing)
+        bm25 = math.log((len(self.docmap) - len(self.index[term[0]]) + 0.5) / (len(self.index[term[0]]) + 0.5) + 1)
+        return bm25
        
 
 def build_command():
@@ -160,3 +174,14 @@ def tfidf_command(doc_id, term):
 
     tfidf = tf_command(doc_id, term) * idf_command(term)
     return tfidf
+
+def bm25_idf_command(term):
+    idx = InvertedIndex()
+    try:
+        idx.load()
+    except FileNotFoundError as e:
+        print(e)
+        return None
+
+    bm25 = idx.get_bm25_idf(term)
+    return bm25
