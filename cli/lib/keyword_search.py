@@ -5,6 +5,7 @@ from typing import Counter
 from lib import search_utils
 from nltk.stem import PorterStemmer
 from collections import defaultdict
+import math
 
 class InvertedIndex:
     def __init__(self):
@@ -130,3 +131,21 @@ def tokenize(text):
 def remove_stopwords(tokens):
     stopwords = search_utils.load_stopwords()
     return [word for word in tokens if word not in stopwords]
+
+# Inverse Document Frequency
+def idf_command(term):
+    idx = InvertedIndex()
+    try:
+        idx.load()
+    except FileNotFoundError as e:
+        print(e)
+        return []
+    
+    # tokenize term
+    stemmer = PorterStemmer()
+    term = [stemmer.stem(t) for t in remove_stopwords(tokenize(term))]
+    
+    # calculate the IDF
+    idf = math.log((len(idx.docmap) +1) / (len(idx.index[term[0]]) +1))
+    print(f"IDF value: {idf}")
+    return idf
