@@ -10,12 +10,20 @@ from lib.search_utils import BM25_B, BM25_K1
 
 class InvertedIndex:
     def __init__(self):
-        self.index = {}
-        self.docmap = {}
-        self.term_frequencies = defaultdict(Counter)
-        self.doc_lengths = {}
+        self.index = {} #{"love": {1, 42, 99}, "dragon": {5, 42}}
+        # Maps doc_id -> full movie dict (title, description, etc.)
+        self.docmap = {}    #{1: {"id": 1, "title": "Titanic", "description": "..."}}
+        # Maps doc_id -> Counter of how many times each token appears in that doc.
+        self.term_frequencies = defaultdict(Counter)    #{1: Counter({"love": 3, "sea": 2})}
+        # Maps doc_id -> total number of tokens in that document.
+        self.doc_lengths = {}   #{1: 120, 42: 85}
         self.doc_lengths_path = os.path.join(search_utils.CACHE_DIR, "doc_lengths.pkl")
 
+    # Example: doc_id=1, text="I love dragons and love fire"
+    # tokens = ["love", "dragon", "fire"]  (after stemming/stopword removal)
+    # index["love"].add(1), index["dragon"].add(1), index["fire"].add(1)
+    # term_frequencies[1] = Counter({"love": 2, "dragon": 1, "fire": 1})
+    # doc_lengths[1] = 4  (total tokens before dedup)
     def __add_document(self, doc_id, text):
         stemmer = PorterStemmer()
         tokens = [stemmer.stem(t) for t in remove_stopwords(tokenize(text))]
@@ -31,11 +39,14 @@ class InvertedIndex:
         # get tokens len
         self.doc_lengths[doc_id] = len(tokens)
 
+    # Given a single stemmed token, returns a sorted list of doc IDs that contain it.
+    # Example: get_documents("love") -> [1, 42, 99]
     def get_documents(self, term):
         term = term.lower()
         ids = self.index.get(term, set())
         return sorted(ids)
     
+    # Loads all movies from disk and indexes each one.
     def build(self):
         movies = search_utils.load_movies()
         for movie in movies:
@@ -83,6 +94,8 @@ class InvertedIndex:
         with open(self.doc_lengths_path, 'rb') as f:
             self.doc_lengths = pickle.load(f)
 
+    # TF = Term Frequency: how many times a term appears in a specific document.
+    # Example: movie 1 has "love" 3 times -> get_tf(1, "love") -> 3
     def get_tf(self, doc_id, term):
         # tokenize term
         stemmer = PorterStemmer()
@@ -93,7 +106,11 @@ class InvertedIndex:
             raise ValueError("term must be a single token")
 
         return self.term_frequencies[doc_id][token[0]]
-    
+
+    # BM25 IDF = Inverse Document Frequency (BM25 variant).
+    # Measures how *rare* a term is across all documents.
+    # Common words like "the" appear in many docs -> low IDF (less useful).
+    # Rare words like "mowgli" appear in few docs -> high IDF (more useful). 
     def get_bm25_idf(self, term: str) -> float:
         # tokenize term
         stemmer = PorterStemmer()
@@ -108,6 +125,7 @@ class InvertedIndex:
         bm25 = math.log((len(self.docmap) - len(self.index[term[0]]) + 0.5) / (len(self.index[term[0]]) + 0.5) + 1)
         return bm25
     
+    # BM25 TF = saturated, length-normalized term frequency.
     def get_bm25_tf(self, doc_id, term, k1=BM25_K1, b=BM25_B):
        # get the raw term frequency
        tf = self.get_tf(doc_id, term)
@@ -137,6 +155,47 @@ class InvertedIndex:
 
         result = all / len(self.doc_lengths)
         return result
+
+    # Combines BM25 TF and BM25 IDF into a single relevance score
+    # for one (document, term) pair.
+    # Score = bm25_tf * bm25_idf
+    # Example: bm25_tf=1.82, bm25_idf=5.2 -> bm25 score = 9.46
+    def bm25(self, doc_id, term):
+        tf = self.get_bm25_tf(doc_id, term, k1=BM25_K1, b=BM25_B)
+        idf = self.get_bm25_idf(term)
+        return tf * idf
+    
+    # Full BM25 search over all documents for a multi-word query.
+    # Steps:
+    #   1. Tokenize the query into stemmed tokens.
+    #      e.g. "love story" -> ["love", "stori"]
+    #   2. For every document in the index, sum the bm25() score for each token.
+    #      e.g. scores[doc_1] = bm25(doc_1, "love") + bm25(doc_1, "stori")
+    #   3. Sort documents by total score, highest first.
+    #   4. Return the top `limit` results with their doc_id, title, and score.
+    def bm25_search(self, query, limit):
+        # tokenize query
+        stemmer = PorterStemmer()
+        query = [stemmer.stem(t) for t in remove_stopwords(tokenize(query))]
+
+        # initialize scores dict (map doc id to total bm25 scores)
+        scores = {}
+
+        for doc_id in self.docmap:
+            total = 0
+            for token in query:
+                total += self.bm25(doc_id, token)
+            scores[doc_id] = total
+
+        # sort the dict desc
+        sorted_docs = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+        
+        results = []
+        for doc_id, score in sorted_docs[:limit]:
+            doc = self.docmap[doc_id]
+            results.append((doc_id, doc["title"], score))
+        return results
+
 
 def build_command():
     idx = InvertedIndex()
@@ -238,3 +297,13 @@ def bm25_tf_command(doc_id, term, k1=BM25_K1, b=BM25_B):
     
     bm25_tf_score = idx.get_bm25_tf(doc_id, term, k1, b)
     return bm25_tf_score
+
+def bm25_search_command(query, limit):
+    idx = InvertedIndex()
+    try:
+        idx.load()
+    except FileNotFoundError as e:
+        print(e)
+        return None
+    
+    return idx.bm25_search(query, limit)
