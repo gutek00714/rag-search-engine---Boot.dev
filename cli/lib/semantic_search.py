@@ -50,6 +50,37 @@ class SemanticSearch:
             
         return self.build_embeddings(documents)
     
+    def search(self, query, limit):
+        # check if embeddings are loaded
+        if self.embeddings is None or self.embeddings.size == 0:
+            raise ValueError("No embeddings loaded. Call `load_or_create_embeddings` first.")
+        
+        # generate an embedding for a query
+        embedding = self.generate_embedding(query)
+
+        # calculate cosine similarity between query embedding and each document embedding
+        similarity_list = []
+        for i, value in enumerate(self.embeddings):
+            similarity_score = cosine_similarity(embedding, value)
+            corresponding_movie = self.documents[i]
+            similarity_list.append((similarity_score, corresponding_movie))
+
+        # sort the list by similarity score desc
+        similarity_list.sort(key=lambda tup: tup[0], reverse=True)
+
+        # return top retults as a list of dict (score, title, description)
+        top_results = similarity_list[:limit]
+
+        final_output = []
+        for score, doc in top_results:
+            final_output.append({
+                "score": float(score),
+                "title": doc['title'],
+                "description": doc['description']
+            })
+
+        return final_output
+    
 def verify_model():
     ss = SemanticSearch()
     print(f"Model loaded: {ss.model}")
@@ -73,3 +104,34 @@ def verify_embeddings():
 
     print(f"Number of docs:   {len(movies)}")
     print(f"Embeddings shape: {embeddings.shape[0]} vectors in {embeddings.shape[1]} dimensions")
+
+def embed_query_text(query):
+    ss = SemanticSearch()
+    embedding = ss.generate_embedding(query)
+
+    print(f"Query: {query}")
+    print(f"First 5 dimensions: {embedding[:5]}")
+    print(f"Shape: {embedding.shape}")
+
+# semantic search engine - find movies based on meaning rather than exact keyword matches
+def cosine_similarity(vec1, vec2):
+    dot_product = np.dot(vec1, vec2)
+    norm1 = np.linalg.norm(vec1)
+    norm2 = np.linalg.norm(vec2)
+
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+    
+    return dot_product / (norm1 * norm2)
+
+def semantic_search(query, limit):
+    ss = SemanticSearch()
+
+    movies = search_utils.load_movies()
+
+    ss.load_or_create_embeddings(movies)
+
+    output = ss.search(query, limit)
+
+    for i, item in enumerate(output, start=1):
+        print(f"{i}. {item['title']} (score: {item['score']:.4f})\n{item['description'][:100]}...\n")
