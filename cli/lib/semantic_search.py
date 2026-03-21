@@ -262,7 +262,16 @@ def chunk(text, chunk_size, overlap):
 
 # split text based on a sentence boundaries to preserve meaning
 def semantic_chunk(text, max_chunk_size, overlap):
+    # delete leading and trailing whitespace
+    text = text.strip()
+    if len(text) == 0:
+        return []
+    
     text_split = re.split(r"(?<=[.!?])\s+", text)
+
+    # check if there is only 1 sentence and it ends with . ! ?
+    if len(text_split) == 1 and not text.endswith((".", "!", "?")):
+        text_split = [text]
 
     chunks = []
     for i in range(0, len(text_split), max_chunk_size - overlap):
@@ -272,7 +281,9 @@ def semantic_chunk(text, max_chunk_size, overlap):
         if i > 0 and i + max_chunk_size > len(text_split) and len(text_split) - i <= overlap:
             break
         chunk_string = " ".join(words)
-        chunks.append(chunk_string)
+        chunk_string = chunk_string.strip()
+        if len(chunk_string) > 0:
+            chunks.append(chunk_string)
     
     return chunks
 
