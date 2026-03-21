@@ -19,3 +19,8 @@ def load_movies():
 def load_stopwords():
     with open(STOPWORDS_PATH, "r") as f:
         return f.read().splitlines()
+    
+def _populate_documents(self, documents):
+    self.documents = documents
+    for doc in documents:
+        self.document_map[doc["id"]] = doc
