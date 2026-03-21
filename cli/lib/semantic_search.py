@@ -1,3 +1,5 @@
+import re
+
 from sentence_transformers import SentenceTransformer
 import numpy as np
 import os
@@ -136,6 +138,7 @@ def semantic_search(query, limit):
     for i, item in enumerate(output, start=1):
         print(f"{i}. {item['title']} (score: {item['score']:.4f})\n{item['description'][:100]}...\n")
 
+# split text based on the chunk_size and overlap
 def chunk(text, chunk_size, overlap):
     # split text on whitespace
     text_split = text.split()
@@ -151,3 +154,18 @@ def chunk(text, chunk_size, overlap):
     print(f"Chunking {len(text)} characters\n")
     for i, item in enumerate(chunks, start=1):
         print(f"{i}. {item}\n")
+
+# split text based on a sentence boundaries to preserve meaning
+def semantic_chunk(text, max_chunk_size, overlap):
+    text_split = re.split(r"(?<=[.!?])\s+", text)
+
+    chunks = []
+    for i in range(0, len(text_split), max_chunk_size - overlap):
+        words = text_split[i:i + max_chunk_size]
+        chunk_string = " ".join(words)
+        chunks.append(chunk_string)
+
+    print(f'Semantically chunking {len(text)} characters')
+    for i, item in enumerate(chunks, start=1):
+        print(f"{i}. {item}")
+    
