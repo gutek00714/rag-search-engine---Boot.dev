@@ -22,9 +22,10 @@ def main():
     search_parser.add_argument("query", type=str, help="Search query")
     search_parser.add_argument("--limit", type=int, default=5, help="Number of results to return")
 
-    chunk_parser = subparsers.add_parser("chunk", help="Get a chunk of the text")
-    chunk_parser.add_argument("text", type=str, help="Required text to chunk")
-    chunk_parser.add_argument("--chunk-size", type=int, default=200, help="Chunk size")
+    chunk_parser = subparsers.add_parser("chunk", help="Split text into fixed-size chunks")
+    chunk_parser.add_argument("text", type=str, help="Text to chunk")
+    chunk_parser.add_argument("--chunk-size", type=int, default=200, help="Size of each chunk in words")
+    chunk_parser.add_argument("--overlap", type=int, help="Number of words to share between consecutive chunks")
 
     args = parser.parse_args()
 
@@ -40,7 +41,7 @@ def main():
         case "search":
             semantic_search(args.query, args.limit)
         case "chunk":
-            chunk(args.text, args.chunk_size)
+            chunk(args.text, args.chunk_size, args.overlap)
         case _:
             parser.print_help()
 
