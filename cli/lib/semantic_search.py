@@ -146,6 +146,49 @@ class ChunkedSemanticSearch(SemanticSearch):
             return self.chunk_embeddings
         else:
             return self.build_chunk_embeddings(documents)
+
+    # search functionality that queries against chunk embeddings and aggregates results
+    def search_chunks(self, query: str, limit: int = 10):
+        query_embedding = self.generate_embedding(query) #vec1
+
+        chunk_score = []
+
+        if self.chunk_embeddings is None or self.chunk_metadata is None:
+            raise ValueError("No chunk embeddings loaded. Call load_or_create_chunk_embeddings first.")
+
+        for chunk_idx, chunk_embedding in enumerate(self.chunk_embeddings):
+            score = cosine_similarity(chunk_embedding, query_embedding)
+            chunk_score.append({
+                "chunk_idx": self.chunk_metadata[chunk_idx]["chunk_idx"],
+                "movie_idx": self.chunk_metadata[chunk_idx]["movie_idx"],
+                "score": score,
+            })
+
+        map_movie_index_to_score = {}
+
+        for score in chunk_score:
+            movie_idx = score["movie_idx"]
+            if movie_idx not in map_movie_index_to_score or score["score"] > map_movie_index_to_score[movie_idx]:
+                map_movie_index_to_score[movie_idx] = score["score"]
+
+        # sort movie scores by score in descending order
+        sorted_movie_scores = sorted(map_movie_index_to_score.items(), key=lambda item: item[1], reverse=True)
+
+        # filter down to the top limit
+        top_movies = sorted_movie_scores[:limit]
+
+        results = []
+        for movie_idx, score in top_movies:
+            doc = self.documents[movie_idx]
+            results.append({
+                "id": doc["id"],
+                "title": doc["title"],
+                "document": doc["description"][:100],
+                "score": round(score, 4),
+                "metadata": doc.get("metadata", {})
+            })
+
+        return results
     
     
 def verify_model():
@@ -239,3 +282,17 @@ def embed_chunks_command():
     css = ChunkedSemanticSearch()
 
     return css.load_or_create_chunk_embeddings(movies)
+
+def search_chunked_command(query, limit):
+    movies = search_utils.load_movies()
+
+    css  = ChunkedSemanticSearch()
+
+    css.load_or_create_chunk_embeddings(movies)
+
+    results = css.search_chunks(query, limit)
+
+    return {
+        "query": query,
+        "results": results
+    }
