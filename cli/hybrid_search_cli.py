@@ -16,7 +16,10 @@ def main() -> None:
     weighted_search.add_argument("--alpha", type=float, default=0.5, help="Alpha constant")
     weighted_search.add_argument("--limit", type=int, default=5, help="Limit query")
 
-    rrf_search = subparsers.add_parser("rrf-search", help=)
+    rrf_search = subparsers.add_parser("rrf-search", help="Reciprocal Rank Fusion")
+    rrf_search.add_argument("query", type=str, help="Search query")
+    rrf_search.add_argument("-k", type=int, default=60, help="Parameter that controls how much more weight we give to a higher-ranked results vs. lower-ranked ones")
+    rrf_search.add_argument("--limit", type=int, default=5, help="Limit query")
 
     args = parser.parse_args()
 
@@ -35,7 +38,14 @@ def main() -> None:
                 print(f"BM25: {item['keyword_score']:.3f}, Semantic: {item['semantic_score']:.3f}")
                 print(f"{item['doc']['description'][:100]}...")
         case "rrf-search":
-
+            movies = load_movies()
+            hs = HybridSearch(movies)
+            rrf = hs.rrf_search(args.query, args.k, args.limit)
+            for i, item in enumerate(rrf, start=1):
+                print(f"{i}. {item['doc']['title']}")
+                print(f"RRF Score: {item['rrf_score']:.3f}")
+                print(f"BM25 Rank: {item['bm25_rank']}, Semantic Rank: {item['semantic_rank']}")
+                print(f"{item['doc']['description'][:100]}...")
         case _:
             parser.print_help()
 

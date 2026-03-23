@@ -64,7 +64,42 @@ class HybridSearch:
 
 
     def rrf_search(self, query, k, limit=10):
-        raise NotImplementedError("RRF hybrid search is not implemented yet.")
+        # get BM25 results
+        bm25 = self._bm25_search(query, limit * 500)
+
+        # get semantic results
+        semantic = self.semantic_search.search_chunks(query, limit * 500)
+
+        # combine both results using Reciprocal Rank Fusion
+        #--------------------
+        combined = {}   # map document id to documents themselves and their bm25 and sematntic ranks
+        for i, (doc_id, title, score) in enumerate(bm25, start=1):
+            rrf = rrf_score(i, k)
+            combined[doc_id] = {
+                "doc": self.idx.docmap[doc_id],
+                "bm25_rank": i,
+                "semantic_rank": None,
+                "rrf_score": rrf
+            }
+
+        for i, results in enumerate(semantic, start=1): #results = {id, title, document, score, metadata}
+            doc_id = results["id"]
+            rrf = rrf_score(i, k)
+            if doc_id in combined:
+                combined[doc_id]["semantic_rank"] = i
+                combined[doc_id]["rrf_score"] += rrf
+            else:
+                combined[doc_id] = {
+                    "doc": self.idx.docmap[doc_id],
+                    "bm25_rank": None,
+                    "semantic_rank": i,
+                    "rrf_score": rrf
+                }
+
+        #--------------------
+        sorted_results = sorted(combined.values(), key=lambda x: x["rrf_score"], reverse=True)
+        return sorted_results
+
     
 def normalize(scores) -> list:
     if len(scores) == 0:
@@ -84,3 +119,6 @@ def normalize(scores) -> list:
         scores[i] = (item - min_score) / (max_score - min_score)
     
     return scores
+
+def rrf_score(rank, k=60):
+    return 1 / (k + rank)
