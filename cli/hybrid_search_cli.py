@@ -2,6 +2,7 @@ import argparse
 
 from lib.hybrid_search import HybridSearch, normalize
 from lib.search_utils import load_movies
+from lib.query_enhancement import enhance_query
 
 
 def main() -> None:
@@ -20,6 +21,7 @@ def main() -> None:
     rrf_search.add_argument("query", type=str, help="Search query")
     rrf_search.add_argument("-k", type=int, default=60, help="Parameter that controls how much more weight we give to a higher-ranked results vs. lower-ranked ones")
     rrf_search.add_argument("--limit", type=int, default=5, help="Limit query")
+    rrf_search.add_argument("--enhance", type=str, choices=["spell"], help="Query enhancement method")
 
     args = parser.parse_args()
 
@@ -40,7 +42,10 @@ def main() -> None:
         case "rrf-search":
             movies = load_movies()
             hs = HybridSearch(movies)
-            rrf = hs.rrf_search(args.query, args.k, args.limit)
+            enhanced = enhance_query(args.query, args.enhance)
+            if enhanced != args.query:
+                print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{enhanced}'\n")
+            rrf = hs.rrf_search(enhanced, args.k, args.limit)
             for i, item in enumerate(rrf, start=1):
                 print(f"{i}. {item['doc']['title']}")
                 print(f"RRF Score: {item['rrf_score']:.3f}")
