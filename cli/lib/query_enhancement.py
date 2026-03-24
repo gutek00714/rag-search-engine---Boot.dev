@@ -49,10 +49,29 @@ User query: "{query}"
     corrected = (response.text or "").strip().strip('"')
     return corrected if corrected else query
 
+def expand_correct(query: str) -> str:
+    response = client.models.generate_content(model=model, contents = f"""Expand the user-provided movie search query below with related terms.
+
+Add synonyms and related concepts that might appear in movie descriptions.
+Keep expansions relevant and focused.
+Output only the additional terms; they will be appended to the original query.
+
+Examples:
+- "scary bear movie" -> "scary horror grizzly bear movie terrifying film"
+- "action movie with bear" -> "action thriller bear chase fight adventure"
+- "comedy with bear" -> "comedy funny bear humor lighthearted"
+
+User query: "{query}"
+""")
+    corrected = (response.text or "").strip().strip('"')
+    return corrected if corrected else query
+
 def enhance_query(query: str, method: Optional[str]) -> str:
     if method == "spell":
         return spell_correct(query)
     elif method == "rewrite":
         return rewrite_correct(query)
+    elif method == "expand":
+        return expand_correct(query)
     else:
         return query

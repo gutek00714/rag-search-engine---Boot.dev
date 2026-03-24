@@ -21,7 +21,7 @@ def main() -> None:
     rrf_search.add_argument("query", type=str, help="Search query")
     rrf_search.add_argument("-k", type=int, default=60, help="Parameter that controls how much more weight we give to a higher-ranked results vs. lower-ranked ones")
     rrf_search.add_argument("--limit", type=int, default=5, help="Limit query")
-    rrf_search.add_argument("--enhance", type=str, choices=["spell", "rewrite"], help="Query enhancement method")
+    rrf_search.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method")
 
     args = parser.parse_args()
 
