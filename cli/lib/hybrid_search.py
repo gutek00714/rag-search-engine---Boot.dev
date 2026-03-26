@@ -98,7 +98,7 @@ class HybridSearch:
 
         #--------------------
         sorted_results = sorted(combined.values(), key=lambda x: x["rrf_score"], reverse=True)
-        return sorted_results
+        return sorted_results[:limit]
 
     
 def normalize(scores) -> list:
