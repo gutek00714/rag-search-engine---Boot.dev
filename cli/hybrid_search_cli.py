@@ -23,7 +23,7 @@ def main() -> None:
     rrf_search.add_argument("-k", type=int, default=60, help="Parameter that controls how much more weight we give to a higher-ranked results vs. lower-ranked ones")
     rrf_search.add_argument("--limit", type=int, default=5, help="Limit query")
     rrf_search.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method")
-    rrf_search.add_argument("--rerank-method", type=str, choices=["individual"], help="The method used for reranking results")
+    rrf_search.add_argument("--rerank-method", type=str, choices=["individual", "batch"], help="The method used for reranking results")
 
     args = parser.parse_args()
 
@@ -52,15 +52,21 @@ def main() -> None:
             if args.rerank_method == "individual":
                 print(f"Re-ranking top {args.limit} results using individual method...\n")
                 rrf = rerank(enhanced, rrf, args.rerank_method, args.limit)
+            elif args.rerank_method == "batch":
+                print(f"Re-ranking top {args.limit} results using batch method...")
+                rrf = rerank(enhanced, rrf, args.rerank_method, args.limit)
             else:
                 rrf = rrf[:args.limit]
+            print(f"Reciprocal Rank Fusion Results for '{args.query}' (k={args.k}):\n")
             for i, item in enumerate(rrf, start=1):
                 print(f"{i}. {item['doc']['title']}")
                 if "individual_score" in item:
-                    print(f"Re-rank Score: {item['individual_score']:.3f}/10")
-                print(f"RRF Score: {item['rrf_score']:.3f}")
-                print(f"BM25 Rank: {item['bm25_rank']}, Semantic Rank: {item['semantic_rank']}")
-                print(f"{item['doc']['description'][:100]}...")
+                    print(f"   Re-rank Score: {item['individual_score']:.3f}/10")
+                if "batch_rank" in item:
+                    print(f"   Re-rank Rank: {item['batch_rank']}")
+                print(f"   RRF Score: {item['rrf_score']:.3f}")
+                print(f"   BM25 Rank: {item['bm25_rank']}, Semantic Rank: {item['semantic_rank']}")
+                print(f"   {item['doc']['description'][:100]}...")
         case _:
             parser.print_help()
 
