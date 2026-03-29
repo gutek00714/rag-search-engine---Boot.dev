@@ -3,6 +3,7 @@ import os
 import time
 from dotenv import load_dotenv
 from google import genai
+from sentence_transformers import CrossEncoder
 
 # load api key from .env
 load_dotenv()
@@ -88,11 +89,33 @@ Ranking:""")
     sorted_reranked = sorted(reranked, key=lambda x: x["batch_rank"])
     return sorted_reranked[:limit]
 
+def llm_rerank_cross_encoder(query, documents, limit=5):
+    pairs = [] #list of "pair" lists
+    
+    for doc in documents:
+        pairs.append([query, f"{doc["doc"].get('title', '')} - {doc["doc"].get('document', '')}"])
+
+    # create an instance of crossencoder and compute scores for all the pairs
+    cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
+    # `predict` returns a list of numbers, one for each pair
+    scores = cross_encoder.predict(pairs)
+
+    # attach scores back to document
+    scored_docs = []
+    for i, doc in enumerate(documents):
+        scored_docs.append({**doc, "cross_encoder_score": float(scores[i])})
+
+    sorted_scores = sorted(scored_docs, key=lambda x: x["cross_encoder_score"], reverse=True)
+
+    return sorted_scores[:limit]
+
 
 def rerank(query, documents, method=None, limit=5):
     if method == "individual":
         return llm_rerank_individual(query, documents, limit)
     elif method == "batch":
         return llm_rerank_batch(query, documents, limit)
+    elif method == "cross_encoder":
+        return llm_rerank_cross_encoder(query, documents, limit)
     else:
         return documents[:limit]
