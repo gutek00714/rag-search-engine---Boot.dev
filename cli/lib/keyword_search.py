@@ -24,7 +24,7 @@ class InvertedIndex:
     # index["love"].add(1), index["dragon"].add(1), index["fire"].add(1)
     # term_frequencies[1] = Counter({"love": 2, "dragon": 1, "fire": 1})
     # doc_lengths[1] = 4  (total tokens before dedup)
-    def __add_document(self, doc_id, text):
+    def __add_document(self, doc_id, text) -> None:
         stemmer = PorterStemmer()
         tokens = [stemmer.stem(t) for t in remove_stopwords(tokenize(text))]
         for token in tokens:
@@ -41,20 +41,20 @@ class InvertedIndex:
 
     # Given a single stemmed token, returns a sorted list of doc IDs that contain it.
     # Example: get_documents("love") -> [1, 42, 99]
-    def get_documents(self, term):
+    def get_documents(self, term) -> list[int]:
         term = term.lower()
         ids = self.index.get(term, set())
         return sorted(ids)
     
     # Loads all movies from disk and indexes each one.
-    def build(self):
+    def build(self) -> None:
         movies = search_utils.load_movies()
         for movie in movies:
             doc_id = movie["id"]
             self.docmap[doc_id] = movie
             self.__add_document(doc_id, f"{movie['title']} {movie['description']}")
 
-    def save(self):
+    def save(self) -> None:
         # Check if cache dir exist -> create one
         if not os.path.exists('cache'):
             os.makedirs('cache')
@@ -75,7 +75,7 @@ class InvertedIndex:
         with open(self.doc_lengths_path, 'wb') as f:
             pickle.dump(self.doc_lengths, f)
 
-    def load(self):
+    def load(self) -> None:
         # Check if files exist
         paths = ["cache/index.pkl", "cache/docmap.pkl"]
         for path in paths:
@@ -127,7 +127,7 @@ class InvertedIndex:
         return bm25
     
     # BM25 TF = saturated, length-normalized term frequency.
-    def get_bm25_tf(self, doc_id, term, k1=BM25_K1, b=BM25_B):
+    def get_bm25_tf(self, doc_id, term, k1=BM25_K1, b=BM25_B) -> float:
        # get the raw term frequency
        tf = self.get_tf(doc_id, term)
 
@@ -161,7 +161,7 @@ class InvertedIndex:
     # for one (document, term) pair.
     # Score = bm25_tf * bm25_idf
     # Example: bm25_tf=1.82, bm25_idf=5.2 -> bm25 score = 9.46
-    def bm25(self, doc_id, term):
+    def bm25(self, doc_id, term) -> float:
         tf = self.get_bm25_tf(doc_id, term, k1=BM25_K1, b=BM25_B)
         idf = self.get_bm25_idf(term)
         return tf * idf
@@ -174,7 +174,7 @@ class InvertedIndex:
     #      e.g. scores[doc_1] = bm25(doc_1, "love") + bm25(doc_1, "stori")
     #   3. Sort documents by total score, highest first.
     #   4. Return the top `limit` results with their doc_id, title, and score.
-    def bm25_search(self, query, limit):
+    def bm25_search(self, query, limit) -> list[tuple[int, str, float]]:
         # tokenize query
         stemmer = PorterStemmer()
         query = [stemmer.stem(t) for t in remove_stopwords(tokenize(query))]
@@ -198,13 +198,13 @@ class InvertedIndex:
         return results
 
 
-def build_command():
+def build_command() -> None:
     idx = InvertedIndex()
     idx.build()
     idx.save()
 
 
-def search_command(query):
+def search_command(query) -> list[dict]:
     idx = InvertedIndex()
     try:
         idx.load()
@@ -240,22 +240,22 @@ def tf_command(doc_id, term) -> int:
     return idx.get_tf(doc_id, term)
 
 
-def tokenize(text):
+def tokenize(text) -> list[str]:
     cleaned_text = text.lower().translate(str.maketrans('', '', string.punctuation))
     return cleaned_text.split()
 
-def remove_stopwords(tokens):
+def remove_stopwords(tokens) -> list[str]:
     stopwords = search_utils.load_stopwords()
     return [word for word in tokens if word not in stopwords]
 
 # Inverse Document Frequency
-def idf_command(term):
+def idf_command(term) -> float:
     idx = InvertedIndex()
     try:
         idx.load()
     except FileNotFoundError as e:
         print(e)
-        return []
+        raise
     
     # tokenize term
     stemmer = PorterStemmer()
@@ -266,45 +266,45 @@ def idf_command(term):
     return idf
 
 # TF-IDF
-def tfidf_command(doc_id, term):
+def tfidf_command(doc_id, term) -> float:
     idx = InvertedIndex()
     try:
         idx.load()
     except FileNotFoundError as e:
         print(e)
-        return []
+        raise
 
     tfidf = tf_command(doc_id, term) * idf_command(term)
     return tfidf
 
-def bm25_idf_command(term):
+def bm25_idf_command(term) -> float:
     idx = InvertedIndex()
     try:
         idx.load()
     except FileNotFoundError as e:
         print(e)
-        return None
+        raise
 
     bm25 = idx.get_bm25_idf(term)
     return bm25
 
-def bm25_tf_command(doc_id, term, k1=BM25_K1, b=BM25_B):
+def bm25_tf_command(doc_id, term, k1=BM25_K1, b=BM25_B) -> float:
     idx = InvertedIndex()
     try:
         idx.load()
     except FileNotFoundError as e:
         print(e)
-        return None
+        raise
     
     bm25_tf_score = idx.get_bm25_tf(doc_id, term, k1, b)
     return bm25_tf_score
 
-def bm25_search_command(query, limit):
+def bm25_search_command(query, limit) -> list[tuple[int,str,float]]:
     idx = InvertedIndex()
     try:
         idx.load()
     except FileNotFoundError as e:
         print(e)
-        return None
+        raise
     
     return idx.bm25_search(query, limit)

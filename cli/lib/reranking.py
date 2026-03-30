@@ -17,13 +17,13 @@ client = genai.Client(api_key=api_key)
 # get a response (returns object)
 model = "gemma-3-27b-it"
 
-def llm_rerank_individual(query, documents, limit=5):
+def llm_rerank_individual(query, documents, limit=5) -> list[dict]:
     scored_docs = []
 
     for doc in documents:
         movie = doc["doc"]
-        title = doc.get("title", "")
-        document = doc.get("document", "")
+        title = movie.get("title", "")
+        document = movie.get("document", movie.get("description", ""))
         
         response = client.models.generate_content(model=model, contents=f"""Rate how well this movie matches the search query.
 
@@ -48,7 +48,7 @@ Score:""")
     sorted_results = sorted(scored_docs, key=lambda x: x["individual_score"], reverse=True)
     return sorted_results[:limit]
 
-def llm_rerank_batch(query, documents, limit=5):
+def llm_rerank_batch(query, documents, limit=5) -> list[dict]:
     lines=[]
     for doc in documents:
         movie = doc["doc"]
@@ -89,11 +89,11 @@ Ranking:""")
     sorted_reranked = sorted(reranked, key=lambda x: x["batch_rank"])
     return sorted_reranked[:limit]
 
-def llm_rerank_cross_encoder(query, documents, limit=5):
+def llm_rerank_cross_encoder(query, documents, limit=5) -> list[dict]:
     pairs = [] #list of "pair" lists
     
     for doc in documents:
-        pairs.append([query, f"{doc["doc"].get('title', '')} - {doc["doc"].get('document', '')}"])
+        pairs.append([query, f"{doc['doc'].get('title', '')} - {doc['doc'].get('document', doc['doc'].get('description', ''))}"])
 
     # create an instance of crossencoder and compute scores for all the pairs
     cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
@@ -110,7 +110,7 @@ def llm_rerank_cross_encoder(query, documents, limit=5):
     return sorted_scores[:limit]
 
 
-def rerank(query, documents, method=None, limit=5):
+def rerank(query, documents, method=None, limit=5) -> list[dict]:
     if method == "individual":
         return llm_rerank_individual(query, documents, limit)
     elif method == "batch":

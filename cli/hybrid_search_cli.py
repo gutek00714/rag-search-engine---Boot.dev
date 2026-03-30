@@ -68,7 +68,7 @@ def main() -> None:
                 if "batch_rank" in item:
                     print(f"   Re-rank Rank: {item['batch_rank']}")
                 if "cross_encoder_score" in item:
-                    print(f"Cross Encoder Score: {item['cross_encoder_score']}")
+                    print(f"    Cross Encoder Score: {item['cross_encoder_score']:.3f}")
                 print(f"   RRF Score: {item['rrf_score']:.3f}")
                 print(f"   BM25 Rank: {item['bm25_rank']}, Semantic Rank: {item['semantic_rank']}")
                 print(f"   {item['doc']['description'][:100]}...")

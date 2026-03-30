@@ -17,11 +17,11 @@ class HybridSearch:
         else:
             self.idx.load()
 
-    def _bm25_search(self, query, limit):
+    def _bm25_search(self, query, limit) ->  list[tuple[int, str, float]]:
         self.idx.load()
         return self.idx.bm25_search(query, limit)
 
-    def weighted_search(self, query, alpha, limit=5):
+    def weighted_search(self, query, alpha, limit=5) -> list[dict]:
         # get bm25 results
         bm25 = self._bm25_search(query, limit * 500)
 
@@ -63,7 +63,7 @@ class HybridSearch:
         return sorted_results[:limit]
 
 
-    def rrf_search(self, query, k, limit=10):
+    def rrf_search(self, query, k, limit=10) -> list[dict]:
         # get BM25 results
         bm25 = self._bm25_search(query, limit * 500)
 
@@ -120,5 +120,5 @@ def normalize(scores) -> list:
     
     return scores
 
-def rrf_score(rank, k=60):
+def rrf_score(rank, k=60) -> float:
     return 1 / (k + rank)
