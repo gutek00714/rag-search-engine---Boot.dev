@@ -96,7 +96,7 @@ class InvertedIndex:
 
     # TF = Term Frequency: how many times a term appears in a specific document.
     # Example: movie 1 has "love" 3 times -> get_tf(1, "love") -> 3
-    def get_tf(self, doc_id, term):
+    def get_tf(self, doc_id, term) -> int:
         # tokenize term
         stemmer = PorterStemmer()
         token = [stemmer.stem(t) for t in remove_stopwords(tokenize(term))]
@@ -114,15 +114,16 @@ class InvertedIndex:
     def get_bm25_idf(self, term: str) -> float:
         # tokenize term
         stemmer = PorterStemmer()
-        term = [stemmer.stem(t) for t in remove_stopwords(tokenize(term))]
+        tokens = [stemmer.stem(t) for t in remove_stopwords(tokenize(term))]
 
-        if len(term) != 1:
+        if len(tokens) != 1:
             raise ValueError("term must be a single token")
 
         # BM25 IDF formula: log((N - df + 0.5) / (df + 0.5) + 1) - (N - total number of documents, df document frequency)
         # Numerator (N - df + 0.5): Count of documents WITHOUT the term (plus smoothing)
         # Denominator (df + 0.5): Count of documents WITH the term (plus smoothing)
-        bm25 = math.log((len(self.docmap) - len(self.index[term[0]]) + 0.5) / (len(self.index[term[0]]) + 0.5) + 1)
+        df = len(self.index.get(tokens[0], set()))
+        bm25 = math.log((len(self.docmap) - df + 0.5) / (df + 0.5) + 1)
         return bm25
     
     # BM25 TF = saturated, length-normalized term frequency.
@@ -228,13 +229,13 @@ def search_command(query):
 
     return results
 
-def tf_command(doc_id, term):
+def tf_command(doc_id, term) -> int:
     idx = InvertedIndex()
     try:
         idx.load()
     except FileNotFoundError as e:
         print(e)
-        return []
+        raise
     
     return idx.get_tf(doc_id, term)
 
