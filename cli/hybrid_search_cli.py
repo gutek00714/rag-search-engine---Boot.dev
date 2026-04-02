@@ -5,6 +5,7 @@ from lib.hybrid_search import HybridSearch, normalize
 from lib.search_utils import load_movies
 from lib.query_enhancement import enhance_query
 from lib.reranking import rerank
+from lib.evaluation import llm_judge_results
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ def main() -> None:
     rrf_search.add_argument("--limit", type=int, default=5, help="Limit query")
     rrf_search.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method")
     rrf_search.add_argument("--rerank-method", type=str, choices=["individual", "batch", "cross_encoder"], help="The method used for reranking results")
+    rrf_search.add_argument("--evaluate", action="store_true", help="Use LLM to evaluate result relevance")
 
     args = parser.parse_args()
 
@@ -84,6 +86,13 @@ def main() -> None:
                 print(f"   RRF Score: {item['rrf_score']:.3f}")
                 print(f"   BM25 Rank: {item['bm25_rank']}, Semantic Rank: {item['semantic_rank']}")
                 print(f"   {item['doc']['description'][:100]}...")
+            
+            #evaluate
+            if args.evaluate:
+                scores = llm_judge_results(args.query, rrf)
+                for i, item in enumerate(rrf, start=1):
+                    print(f"{i}. {item['doc']['title']}: {scores[i-1]}/3")
+
         case _:
             parser.print_help()
 
