@@ -1,9 +1,13 @@
 import argparse
+import logging
 
 from lib.hybrid_search import HybridSearch, normalize
 from lib.search_utils import load_movies
 from lib.query_enhancement import enhance_query
 from lib.reranking import rerank
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 def main() -> None:
@@ -44,11 +48,16 @@ def main() -> None:
         case "rrf-search":
             movies = load_movies()
             hs = HybridSearch(movies)
+            logger.debug(f"Original query: {args.query}")
             enhanced = enhance_query(args.query, args.enhance)
+            logger.debug(f"Enhanced query: {enhanced}")
             if enhanced != args.query:
                 print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{enhanced}'\n")
             rrf_limit = args.limit * 5 if args.rerank_method else args.limit
             rrf = hs.rrf_search(enhanced, args.k, rrf_limit)
+            logger.debug(f"RRF search returned {len(rrf)} results")
+            for r in rrf[:5]:
+                logger.debug(f"  {r['doc']['title']} (RRF: {r['rrf_score']:.4f})")
             if args.rerank_method == "individual":
                 print(f"Re-ranking top {args.limit} results using individual method...\n")
                 rrf = rerank(enhanced, rrf, args.rerank_method, args.limit)
@@ -60,6 +69,9 @@ def main() -> None:
                 rrf = rerank(enhanced, rrf, args.rerank_method, args.limit)
             else:
                 rrf = rrf[:args.limit]
+            logger.debug(f"Final results after re-ranking: {len(rrf)} results")
+            for r in rrf:
+                logger.debug(f"  {r['doc']['title']}")
             print(f"Reciprocal Rank Fusion Results for '{args.query}' (k={args.k}):\n")
             for i, item in enumerate(rrf, start=1):
                 print(f"{i}. {item['doc']['title']}")
