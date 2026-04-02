@@ -38,9 +38,13 @@ def main():
         # measures completeness - the percentage of all relevant documents you actually retrieved (how much of what's relevant did you find)
         recall = relevant_retrieved / len(case["relevant_docs"])
 
+        # F1 score - balances precision and recall when both are equally important
+        f1 = 2 * (precision * recall) / (precision + recall)
+
         print(f" - Query: {case['query']}")
         print(f"    - Precision@{limit}: {precision:.4f}")
         print(f"    - Recall@{limit}: {recall:.4f}")
+        print(f"    - F1 Score: {f1:.4f}")
         print(f"    - Retrieved: {', '.join(retrieved_titles)}")
         print(f"    - Relevant: {', '.join(case['relevant_docs'])}")
 
