@@ -1,0 +1,36 @@
+# load api key from .env
+import os
+
+from dotenv import load_dotenv
+from google import genai
+
+
+load_dotenv()
+api_key = os.environ.get("GEMINI_API_KEY")
+if not api_key:
+    raise RuntimeError("GEMINI_API_KEY environment variable not set")
+
+# use api key to create a new instance of gemini client
+client = genai.Client(api_key=api_key)
+
+# get a response (returns object)
+model = "gemma-3-27b-it"
+
+def generate_answer(query, rrf: list[dict]) -> str:
+    context = ""
+    for result in rrf:
+        context += f"{result['doc']['title']}: {result['doc'].get('description', '')}\n\n"
+
+
+    response = client.models.generate_content(model=model, contents=f"""You are a RAG agent for Hoopla, a movie streaming service.
+Your task is to provide a natural-language answer to the user's query based on documents retrieved during search.
+Provide a comprehensive answer that addresses the user's query.
+
+Query: {query}
+
+Documents:
+{context}
+
+Answer:""")
+    
+    return (response.text or "").strip()
