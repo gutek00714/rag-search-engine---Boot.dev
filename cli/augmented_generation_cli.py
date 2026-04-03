@@ -1,6 +1,6 @@
 import argparse
 
-from lib.augmented_generation import citations_answer, generate_answer, summarize_answer
+from lib.augmented_generation import citations_answer, generate_answer, summarize_answer, question_answer
 from lib.hybrid_search import HybridSearch
 from lib.search_utils import load_movies, RRF_K
 
@@ -21,6 +21,10 @@ def main():
     citations_parser = subparsers.add_parser("citations", help="Add citations to the result")
     citations_parser.add_argument("query", type=str, help="Search query")
     citations_parser.add_argument("--limit", type=int, default=5, help="Limit query")
+
+    question_parser = subparsers.add_parser("question", help="Answer the question")
+    question_parser.add_argument("question", type=str, help="Question to ask")
+    question_parser.add_argument("--limit", type=int, default=5, help="Limit the answers")
 
     args = parser.parse_args()
 
@@ -71,6 +75,20 @@ def main():
             print()
             print("LLM Answer:")
             print(f"{citations}")
+        case "question":
+            movies = load_movies()
+            hs = HybridSearch(movies)
+
+            rrf = hs.rrf_search(args.question, k=RRF_K, limit=args.limit)
+
+            answer = question_answer(args.question, rrf)
+
+            print("Search Results:")
+            for item in rrf:
+                print(f"    - {item['doc']['title']}")
+            print()
+            print("Answer:")
+            print(f"{answer}")
         case _:
             parser.print_help()
 
